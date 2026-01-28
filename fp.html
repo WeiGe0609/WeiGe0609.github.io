@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆翻牌游戏 - 带排行榜</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-item {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .info-value {
+            font-size: 1.5rem;
+            color: #3498db;
+        }
+        
+        .difficulty {
+            margin: 15px 0;
+        }
+        
+        .difficulty button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .difficulty button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .difficulty button.active {
+            background-color: #2c3e50;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px auto;
+            max-width: 500px;
+        }
+        
+        /* 响应式布局 - 小屏幕 */
+        @media (max-width: 600px) {
+            .game-board {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+        }
+        
+        .card {
+            aspect-ratio: 1/1;
+            background: linear-gradient(135deg, #3498db, #8e44ad);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            color: white;
+            cursor: pointer;
+            perspective: 1000px;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: scale(1.05);
+        }
+        
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+        }
+        
+        .card-front {
+            background: linear-gradient(135deg, #3498db, #8e44ad);
+        }
+        
+        .card-back {
+            background: linear-gradient(135deg, #2ecc71, #f1c40f);
+            transform: rotateY(180deg);
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            margin: 0 10px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            background-color: #27ae60;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .win-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+            color: white;
+            font-size: 2.5rem;
+            text-align: center;
+            display: none;
+        }
+        
+        .win-message h2 {
+            margin-bottom: 30px;
+            color: #f1c40f;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.7);
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f1c40f;
+            animation: fall linear forwards;
+        }
+        
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .instructions {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .instructions p {
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        /* 排行榜样式 */
+        .leaderboard-container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .leaderboard-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+        
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .leaderboard-table th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .leaderboard-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .leaderboard-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .leaderboard-table tr:hover {
+            background-color: #e6f7ff;
+        }
+        
+        .name-input {
+            padding: 12px;
+            font-size: 1.2rem;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            margin: 15px 0;
+            width: 250px;
+            text-align: center;
+        }
+        
+        .save-button {
+            background-color: #3498db;
+            margin-top: 10px;
+        }
+        
+        .save-button:hover {
+            background-color: #2980b9;
+        }
+        
+        .leaderboard-button {
+            background-color: #9b59b6;
+        }
+        
+        .leaderboard-button:hover {
+            background-color: #8e44ad;
+        }
+        
+        .no-records {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>记忆翻牌游戏 - 带排行榜</h1>
+        
+        <div class="game-info">
+            <div class="info">
+                <div class="info-item">时间</div>
+                <div class="info-value" id="timer">00:00</div>
+            </div>
+            <div class="info">
+                <div class="info-item">步数</div>
+                <div class="info-value" id="moves">0</div>
+            </div>
+            <div class="info">
+                <div class="info-item">配对</div>
+                <div class="info-value" id="matches">0/8</div>
+            </div>
+        </div>
+        
+        <div class="difficulty">
+            <button class="active" data-level="easy">简单 (4x4)</button>
+            <button data-level="medium">中等 (4x5)</button>
+            <button data-level="hard">困难 (5x6)</button>
+        </div>
+        
+        <div class="game-board" id="game-board">
+            <!-- 卡片将通过JavaScript动态生成 -->
+        </div>
+        
+        <div class="controls">
+            <button id="restart">重新开始</button>
+            <button id="new-game">新游戏</button>
+            <button id="show-leaderboard" class="leaderboard-button">查看排行榜</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>游戏说明</h3>
+            <p>• 点击卡片翻开它们，尝试找出所有匹配的卡片对</p>
+            <p>• 每轮只能翻开两张卡片，如果匹配则保持翻开状态</p>
+            <p>• 尽可能用最少的步数和最短的时间完成游戏</p>
+            <p>• 游戏结束后可以输入名字保存成绩到排行榜</p>
+        </div>
+        
+        <div class="leaderboard-container">
+            <h2 class="leaderboard-title">排行榜</h2>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>玩家</th>
+                        <th>时间</th>
+                        <th>步数</th>
+                        <th>难度</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- 排行榜数据将通过JavaScript动态生成 -->
+                </tbody>
+            </table>
+            <div id="no-records" class="no-records">暂无记录</div>
+        </div>
+    </div>
+    
+    <div class="win-message" id="win-message">
+        <h2>恭喜你赢了！</h2>
+        <p>用时: <span id="win-time"></span></p>
+        <p>步数: <span id="win-moves"></span></p>
+        <p>难度: <span id="win-difficulty"></span></p>
+        
+        <input type="text" id="player-name" class="name-input" placeholder="输入你的名字" maxlength="20">
+        <button id="save-score" class="save-button">保存成绩</button>
+        
+        <button id="play-again">再玩一次</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 游戏元素
+            const gameBoard = document.getElementById('game-board');
+            const timerElement = document.getElementById('timer');
+            const movesElement = document.getElementById('moves');
+            const matchesElement = document.getElementById('matches');
+            const winMessage = document.getElementById('win-message');
+            const winTime = document.getElementById('win-time');
+            const winMoves = document.getElementById('win-moves');
+            const winDifficulty = document.getElementById('win-difficulty');
+            const playerNameInput = document.getElementById('player-name');
+            const leaderboardBody = document.getElementById('leaderboard-body');
+            const noRecordsMessage = document.getElementById('no-records');
+            
+            // 按钮
+            const restartBtn = document.getElementById('restart');
+            const newGameBtn = document.getElementById('new-game');
+            const playAgainBtn = document.getElementById('play-again');
+            const saveScoreBtn = document.getElementById('save-score');
+            const showLeaderboardBtn = document.getElementById('show-leaderboard');
+            const difficultyBtns = document.querySelectorAll('.difficulty button');
+            
+            // 游戏状态
+            let cards = [];
+            let flippedCards = [];
+            let matchedPairs = 0;
+            let totalPairs = 8;
+            let moves = 0;
+            let timer = null;
+            let seconds = 0;
+            let gameStarted = false;
+            let currentLevel = 'easy';
+            let leaderboard = [];
+            
+            // 卡片图标
+            const icons = [
+                '❤️', '⭐', '🐱', '🐶', '🍎', '🍕', '🚗', '🚀',
+                '🏀', '🎮', '📱', '💻', '🎵', '🎬', '📚', '🎨'
+            ];
+            
+            // 初始化游戏
+            function initGame() {
+                // 重置游戏状态
+                gameBoard.innerHTML = '';
+                flippedCards = [];
+                matchedPairs = 0;
+                moves = 0;
+                seconds = 0;
+                gameStarted = false;
+                
+                // 更新UI
+                movesElement.textContent = moves;
+                matchesElement.textContent = `${matchedPairs}/${totalPairs}`;
+                timerElement.textContent = '00:00';
+                
+                // 清除计时器
+                if (timer) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+                
+                // 根据难度设置卡片数量
+                let rows, cols;
+                switch(currentLevel) {
+                    case 'easy':
+                        rows = 4;
+                        cols = 4;
+                        totalPairs = 8;
+                        break;
+                    case 'medium':
+                        rows = 4;
+                        cols = 5;
+                        totalPairs = 10;
+                        break;
+                    case 'hard':
+                        rows = 5;
+                        cols = 6;
+                        totalPairs = 15;
+                        break;
+                }
+                
+                // 更新配对显示
+                matchesElement.textContent = `${matchedPairs}/${totalPairs}`;
+                
+                // 设置游戏板网格
+                gameBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                
+                // 创建卡片
+                createCards();
+                
+                // 加载排行榜
+                loadLeaderboard();
+            }
+            
+            // 创建卡片
+            function createCards() {
+                cards = [];
+                
+                // 获取当前难度所需的图标
+                const levelIcons = icons.slice(0, totalPairs);
+                const cardValues = [...levelIcons, ...levelIcons];
+                
+                // 随机排序
+                shuffleArray(cardValues);
+                
+                // 创建卡片元素
+                cardValues.forEach((value, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.dataset.value = value;
+                    
+                    const cardInner = document.createElement('div');
+                    cardInner.className = 'card-inner';
+                    
+                    const cardFront = document.createElement('div');
+                    cardFront.className = 'card-front';
+                    
+                    const cardBack = document.createElement('div');
+                    cardBack.className = 'card-back';
+                    cardBack.textContent = value;
+                    
+                    cardInner.appendChild(cardFront);
+                    cardInner.appendChild(cardBack);
+                    card.appendChild(cardInner);
+                    
+                    card.addEventListener('click', () => flipCard(card));
+                    gameBoard.appendChild(card);
+                    
+                    cards.push(card);
+                });
+            }
+            
+            // 翻转卡片
+            function flipCard(card) {
+                // 如果游戏尚未开始，开始计时
+                if (!gameStarted) {
+                    startTimer();
+                    gameStarted = true;
+                }
+                
+                // 如果卡片已经翻开或匹配，则忽略点击
+                if (card.classList.contains('flipped') || flippedCards.length === 2) {
+                    return;
+                }
+                
+                // 翻开卡片
+                card.classList.add('flipped');
+                flippedCards.push(card);
+                
+                // 如果翻开了两张卡片
+                if (flippedCards.length === 2) {
+                    moves++;
+                    movesElement.textContent = moves;
+                    
+                    // 检查是否匹配
+                    const card1 = flippedCards[0];
+                    const card2 = flippedCards[1];
+                    
+                    if (card1.dataset.value === card2.dataset.value) {
+                        // 匹配成功
+                        matchedPairs++;
+                        matchesElement.textContent = `${matchedPairs}/${totalPairs}`;
+                        
+                        // 清空已翻开卡片数组
+                        flippedCards = [];
+                        
+                        // 检查游戏是否结束
+                        if (matchedPairs === totalPairs) {
+                            endGame();
+                        }
+                    } else {
+                        // 不匹配，翻回卡片
+                        setTimeout(() => {
+                            card1.classList.remove('flipped');
+                            card2.classList.remove('flipped');
+                            flippedCards = [];
+                        }, 1000);
+                    }
+                }
+            }
+            
+            // 开始计时器
+            function startTimer() {
+                timer = setInterval(() => {
+                    seconds++;
+                    const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+                    const secs = (seconds % 60).toString().padStart(2, '0');
+                    timerElement.textContent = `${minutes}:${secs}`;
+                }, 1000);
+            }
+            
+            // 结束游戏
+            function endGame() {
+                clearInterval(timer);
+                
+                // 显示胜利消息
+                winTime.textContent = timerElement.textContent;
+                winMoves.textContent = moves;
+                
+                // 显示难度
+                let difficultyText = '';
+                switch(currentLevel) {
+                    case 'easy': difficultyText = '简单'; break;
+                    case 'medium': difficultyText = '中等'; break;
+                    case 'hard': difficultyText = '困难'; break;
+                }
+                winDifficulty.textContent = difficultyText;
+                
+                winMessage.style.display = 'flex';
+                playerNameInput.value = '';
+                
+                // 创建庆祝彩带
+                createConfetti();
+            }
+            
+            // 创建庆祝彩带
+            function createConfetti() {
+                const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6'];
+                const container = winMessage;
+                
+                for (let i = 0; i < 150; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = Math.random() * 10 + 5 + 'px';
+                    confetti.style.height = Math.random() * 10 + 5 + 'px';
+                    confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+                    confetti.style.opacity = Math.random() * 0.5 + 0.5;
+                    container.appendChild(confetti);
+                    
+                    // 动画结束后移除元素
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }
+            }
+            
+            // 保存成绩到排行榜
+            function saveScore() {
+                const playerName = playerNameInput.value.trim() || '匿名玩家';
+                const time = winTime.textContent;
+                const moves = winMoves.textContent;
+                const difficulty = winDifficulty.textContent;
+                
+                // 创建新记录
+                const newRecord = {
+                    name: playerName,
+                    time: time,
+                    moves: moves,
+                    difficulty: difficulty,
+                    timestamp: new Date().getTime()
+                };
+                
+                // 添加到排行榜
+                leaderboard.push(newRecord);
+                
+                // 保存到localStorage
+                localStorage.setItem('memoryGameLeaderboard', JSON.stringify(leaderboard));
+                
+                // 更新排行榜显示
+                updateLeaderboard();
+                
+                // 关闭胜利消息
+                winMessage.style.display = 'none';
+                
+                // 显示成功消息
+                alert(`成绩已保存！玩家: ${playerName}, 时间: ${time}, 步数: ${moves}`);
+            }
+            
+            // 加载排行榜
+            function loadLeaderboard() {
+                const savedLeaderboard = localStorage.getItem('memoryGameLeaderboard');
+                if (savedLeaderboard) {
+                    leaderboard = JSON.parse(savedLeaderboard);
+                    updateLeaderboard();
+                }
+            }
+            
+            // 更新排行榜显示
+            function updateLeaderboard() {
+                leaderboardBody.innerHTML = '';
+                
+                if (leaderboard.length === 0) {
+                    noRecordsMessage.style.display = 'block';
+                    return;
+                }
+                
+                noRecordsMessage.style.display = 'none';
+                
+                // 按时间排序（时间短的在前）
+                const sortedLeaderboard = [...leaderboard].sort((a, b) => {
+                    // 将时间字符串转换为秒数进行比较
+                    const aTime = convertTimeToSeconds(a.time);
+                    const bTime = convertTimeToSeconds(b.time);
+                    return aTime - bTime;
+                });
+                
+                // 只显示前10名
+                const topRecords = sortedLeaderboard.slice(0, 10);
+                
+                topRecords.forEach((record, index) => {
+                    const row = document.createElement('tr');
+                    
+                    const rankCell = document.createElement('td');
+                    rankCell.textContent = index + 1;
+                    
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = record.name;
+                    
+                    const timeCell = document.createElement('td');
+                    timeCell.textContent = record.time;
+                    
+                    const movesCell = document.createElement('td');
+                    movesCell.textContent = record.moves;
+                    
+                    const difficultyCell = document.createElement('td');
+                    difficultyCell.textContent = record.difficulty;
+                    
+                    row.appendChild(rankCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(timeCell);
+                    row.appendChild(movesCell);
+                    row.appendChild(difficultyCell);
+                    
+                    leaderboardBody.appendChild(row);
+                });
+            }
+            
+            // 将时间字符串转换为秒数
+            function convertTimeToSeconds(timeStr) {
+                const [minutes, seconds] = timeStr.split(':').map(Number);
+                return minutes * 60 + seconds;
+            }
+            
+            // 辅助函数：随机排序数组
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+            
+            // 事件监听器
+            restartBtn.addEventListener('click', initGame);
+            newGameBtn.addEventListener('click', () => {
+                initGame();
+            });
+            playAgainBtn.addEventListener('click', () => {
+                winMessage.style.display = 'none';
+                initGame();
+            });
+            saveScoreBtn.addEventListener('click', saveScore);
+            showLeaderboardBtn.addEventListener('click', () => {
+                // 滚动到排行榜位置
+                document.querySelector('.leaderboard-container').scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+            
+            // 难度选择
+            difficultyBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    difficultyBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentLevel = btn.dataset.level;
+                    initGame();
+                });
+            });
+            
+            // 玩家名字输入框回车键保存
+            playerNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveScore();
+                }
+            });
+            
+            // 初始化游戏
+            initGame();
+        });
+    </script>
+</body>
+</html>
